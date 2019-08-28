@@ -74,8 +74,8 @@ def set_gps(file_dir):
 
     # with open(filename, "wb") as f:
     #     # setattr(img, 'gps_latitude', (37.0, 31.0, 20.0))
-    #     img.gps_latitude = (37.0, 31.0, 20.0)
-    #     img.gps_longitude = (127.0, 6.0, 59.6)
+    #     img.gps_latitude = (37.0, 32.0, 42.7487)
+    #     img.gps_longitude = (127.0, 7.0, 30.2746)
     #     f.write(img.get_file())
 
     # print("{}\t-> ({}, {})".format(f, img.gps_latitude, img.gps_longitude))
@@ -94,7 +94,7 @@ def print_location(files_dir):
                 img = Image(image_stream)
             except AssertionError:
                 # 동영상인 경우 처리 필요
-                print(f)
+                # print(f)
                 continue
 
             # print(dir(img))
@@ -103,6 +103,8 @@ def print_location(files_dir):
             print("{}\t-> ({}, {})".format(f, img.gps_latitude, img.gps_longitude))
         else:
             print("{}\t-> NO GPS".format(f))
+
+        print(dir(img))
 
 
 def argv_process(argv):
