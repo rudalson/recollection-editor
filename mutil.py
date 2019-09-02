@@ -1,5 +1,6 @@
 import getopt
 import os
+import shutil
 import sys
 from exif import Image
 
@@ -27,13 +28,14 @@ def print_usage():
     base = os.path.basename(__file__)
     bin_name, _ = os.path.splitext(base)
     print('Usage:')
-    print('\t-d, --dir : directory')
+    # print('\t-t, --target : target directory')
     print("\t-r, --rename : rename the contents file to data time's type name")
-    print("\t-g, --gps : set the gps information")
+    # print("\t-g, --gps : set the gps information")
     print("\t-l, --location : show the gps information")
     print('\t-h, --help : help')
     print('Example:')
-    print('\tiutil -rd /data/files/')
+    print('\tmutil -r /data/files/')
+    print('\tmutil -l /data/files/')
     # print(bin_name + )
 
 
@@ -81,12 +83,12 @@ def set_gps(file_dir):
     # print("{}\t-> ({}, {})".format(f, img.gps_latitude, img.gps_longitude))
 
 
-def print_location(files_dir):
-    os.chdir(files_dir)
+def print_location(path):
+    os.chdir(path)
     print('Show GPS location in ', os.getcwd())
     print('-------------------------------------------------')
 
-    for f in os.listdir():
+    for f in sorted(os.listdir()):
         file_name, file_ext = os.path.splitext(f)
 
         with open(f, "rb") as image_stream:
@@ -104,17 +106,19 @@ def print_location(files_dir):
         else:
             print("{}\t-> NO GPS".format(f))
 
-        print(dir(img))
+        # print(dir(img))
 
 
 def argv_process(argv):
     target = ''
+    path = ''
     flag_rename = False
     flag_gps = False
     flag_location = False
+    flag_nogps = False
 
     try:
-        opts, args = getopt.getopt(argv, "hrl:g:d:", ["help", "rename", "location=", "dir=", "gps="])
+        opts, args = getopt.getopt(argv, "hr:l:g:m:", ["help", "rename=", "location=", "move=", "gps=", "nogps="])
     except getopt.GetoptError:
         print_usage()
         sys.exit(2)
@@ -125,28 +129,62 @@ def argv_process(argv):
             sys.exit(2)
         elif opt in ("-r", "--rename"):
             flag_rename = True
-        elif opt in ("-d", "--dir"):
+            path = arg
+        elif opt in ("-m", "--move"):
             target = arg
         elif opt in ("-g", "--gps"):
             flag_gps = True
-            target = arg
+            path = arg
+        elif opt in "--nogps":
+            flag_nogps = True
+            path = arg
         elif opt in ("-l", "--location"):
             flag_location = True
-            target = arg
+            path = arg
 
     if flag_rename:
-        rename_files(target)
-    elif flag_gps:
-        set_gps(target)
+        rename_files(path)
     elif flag_location:
-        print_location(target)
+        print_location(path)
+    elif flag_gps:
+        set_gps(path, target)
+    elif flag_nogps:
+        print_nogps(path, target)
 
     sys.exit(0)
 
 
+def print_nogps(path, target_dir):
+    os.chdir(path)
+
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    for f in sorted(os.listdir(path)):
+        if os.path.isdir(f):
+            continue
+
+        with open(f, "rb") as image_stream:
+            try:
+                img = Image(image_stream)
+            except AssertionError:
+                # 동영상인 경우 처리 필요
+                # print(f)
+                continue
+
+            # print(dir(img))
+
+        if not "gps_latitude" in dir(img):
+            if target_dir == '':
+                print(f)
+            else:
+                src = os.path.join(path, f)
+                dst = os.path.join(target_dir, f)
+                print("{} -> {}".format(src, dst))
+                shutil.move(src, dst)
+
+        # print(dir(img))
+
+
 if __name__ == '__main__':
     argv_process(sys.argv[1:])
-
-
-
-
