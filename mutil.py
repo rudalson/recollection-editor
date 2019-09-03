@@ -66,23 +66,6 @@ def rename_files(files_dir):
         # os.rename(f, final_name + file_ext)
 
 
-def set_gps(file_dir):
-    path, filename = os.path.split(file_dir)
-    os.chdir(path)
-    with open(filename, "rb") as f:
-        img = Image(f)
-
-    print(dir(img))
-
-    # with open(filename, "wb") as f:
-    #     # setattr(img, 'gps_latitude', (37.0, 31.0, 20.0))
-    #     img.gps_latitude = (37.0, 32.0, 42.7487)
-    #     img.gps_longitude = (127.0, 7.0, 30.2746)
-    #     f.write(img.get_file())
-
-    # print("{}\t-> ({}, {})".format(f, img.gps_latitude, img.gps_longitude))
-
-
 def print_location(path):
     os.chdir(path)
     print('Show GPS location in ', os.getcwd())
@@ -147,11 +130,41 @@ def argv_process(argv):
     elif flag_location:
         print_location(path)
     elif flag_gps:
-        set_gps(path, target)
+        print_gps(path, target)
     elif flag_nogps:
         print_nogps(path, target)
 
     sys.exit(0)
+
+
+def print_gps(path, target_dir):
+    os.chdir(path)
+
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    for f in sorted(os.listdir(path)):
+        if os.path.isdir(f):
+            continue
+
+        with open(f, "rb") as image_stream:
+            try:
+                img = Image(image_stream)
+            except AssertionError:
+                # 동영상인 경우 처리 필요
+                # print(f)
+                continue
+
+            # print(dir(img))
+
+        if "gps_latitude" in dir(img):
+            if target_dir == '':
+                print(f)
+            else:
+                src = os.path.join(path, f)
+                dst = os.path.join(target_dir, f)
+                print("{} -> {}".format(src, dst))
+                shutil.move(src, dst)
 
 
 def print_nogps(path, target_dir):
@@ -182,8 +195,6 @@ def print_nogps(path, target_dir):
                 dst = os.path.join(target_dir, f)
                 print("{} -> {}".format(src, dst))
                 shutil.move(src, dst)
-
-        # print(dir(img))
 
 
 if __name__ == '__main__':
