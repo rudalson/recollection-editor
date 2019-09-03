@@ -177,6 +177,11 @@ def print_nogps(path, target_dir):
         if os.path.isdir(f):
             continue
 
+        _, file_ext = os.path.splitext(f)
+        if file_ext.lower() in ('.mp4', '.mov'):
+            print(f)
+            continue
+
         with open(f, "rb") as image_stream:
             try:
                 img = Image(image_stream)
@@ -184,10 +189,16 @@ def print_nogps(path, target_dir):
                 # 동영상인 경우 처리 필요
                 # print(f)
                 continue
+            except:
+                print("Exception : {}".format(f))
+                # sys.stderr("Exception : {}".format(f))
+                exit()
 
             # print(dir(img))
 
-        if not "gps_latitude" in dir(img):
+        if "gps_latitude" in dir(img):
+            print(f)
+        else:
             if target_dir == '':
                 print(f)
             else:
