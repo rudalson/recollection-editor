@@ -47,7 +47,12 @@ def rename_files(files_dir):
     for f in os.listdir():
         file_name, file_ext = os.path.splitext(f)
         with open(f, "rb") as image_stream:
-            img = Image(image_stream)
+            try:
+                img = Image(image_stream)
+            except AssertionError:
+                # 동영상인 경우 처리 필요
+                print(f)
+                continue
             datetime = get_datetime(img)
 
         new_datetime = get_new_file_name(datetime)
