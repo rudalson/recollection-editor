@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 from exif import Image
+import exiftool
+import datetime
 
 
 def get_datetime(image):
@@ -46,16 +48,27 @@ def rename_files(files_dir):
 
     for f in os.listdir():
         file_name, file_ext = os.path.splitext(f)
-        with open(f, "rb") as image_stream:
-            try:
-                img = Image(image_stream)
-            except AssertionError:
-                # 동영상인 경우 처리 필요
-                print(f)
-                continue
-            datetime = get_datetime(img)
 
-        new_datetime = get_new_file_name(datetime)
+        if file_ext.lower() in ['.jpg', '.jpeg']:
+            with open(f, "rb") as image_stream:
+                try:
+                    img = Image(image_stream)
+                    date_time = get_datetime(img)
+                except AssertionError:
+                    print(f)
+                    continue
+        elif file_ext.lower() in ['.mov', '.mp4', '.avi']:
+            with exiftool.ExifTool() as et:
+                meta_data = et.get_metadata(f)
+                print(meta_data)
+                dt = datetime.datetime.strptime(meta_data["QuickTime:MediaCreateDate"], "%Y:%m:%d %H:%M:%S")
+                dt += datetime.timedelta(hours=9)   # 여긴 한국이니깐
+                date_time = dt.strftime("%Y-%m-%d %H.%M.%S")
+                # print(dt)
+        else:
+            continue
+
+        new_datetime = get_new_file_name(date_time)
         if file_name == new_datetime:
             print(f)
             continue
