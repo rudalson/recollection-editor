@@ -36,10 +36,9 @@ def print_usage():
     # print("\t-g, --gps : set the gps information")
     print("\t-l, --location : show the gps information")
     print('\t-h, --help : help')
-    print('Example:')
-    print('\tmutil -r /data/files/')
-    print('\tmutil -l /data/files/')
-    # print(bin_name + )
+    print('\nExample:')
+    print(f'\t{bin_name} -r /data/files/')
+    print(f'\t{bin_name} -l /data/files/')
 
 
 def is_image_file(filename_ext):
@@ -55,14 +54,14 @@ def is_movie_file(filename_ext):
 
 
 def get_image_gps(file_path):
-    with open(file_path, "rb") as image_stream:
+    with exiftool.ExifTool() as et:
         try:
-            img = Image(image_stream)
-            if "gps_latitude" in dir(img):
-                print(img.gps_latitude)
-                return img.gps_latitude, img.gps_longitude
+            meta_data = et.get_metadata(file_path)
+            if "EXIF:GPSLatitude" in meta_data:
+                return meta_data["EXIF:GPSLatitude"], meta_data["EXIF:GPSLongitude"]
         except:
             print(file_path, "-> failed")
+
     return None, None
 
 
@@ -156,6 +155,7 @@ def rename_files(files_dir):
             print(f)
             continue
 
+        # 중복 이름 처리
         final_name = new_datetime
         for i in range(1, 11):
             if os.path.exists(os.path.join(os.getcwd(), final_name + file_ext)):
