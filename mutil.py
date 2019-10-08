@@ -2,8 +2,9 @@ import getopt
 import os
 import shutil
 import sys
-from exif import Image
+
 import exiftool
+from exif import Image
 import datetime
 
 
@@ -41,6 +42,87 @@ def print_usage():
     # print(bin_name + )
 
 
+def is_image_file(filename_ext):
+    if filename_ext.lower() in ['.jpg', '.jpeg']:
+        return True
+    return False
+
+
+def is_movie_file(filename_ext):
+    if filename_ext.lower() in ['.mov', '.mp4', '.avi']:
+        return True
+    return False
+
+
+def get_image_gps(file_path):
+    with open(file_path, "rb") as image_stream:
+        try:
+            img = Image(image_stream)
+            if "gps_latitude" in dir(img):
+                print(img.gps_latitude)
+                return img.gps_latitude, img.gps_longitude
+        except:
+            print(file_path, "-> failed")
+    return None, None
+
+
+def get_movie_gps(file_path):
+    with exiftool.ExifTool() as et:
+        try:
+            meta_data = et.get_metadata(file_path)
+            if "Composite:GPSLatitude" in meta_data:
+                return meta_data["Composite:GPSLatitude"], meta_data["Composite:GPSLongitude"]
+        except:
+            print(file_path, "-> failed")
+
+    return None, None
+
+
+def argv_process(argv):
+    target = ''
+    path = ''
+    flag_rename = False
+    flag_gps = False
+    flag_location = False
+    flag_nogps = False
+
+    try:
+        opts, args = getopt.getopt(argv, "hr:l:g:m:", ["help", "rename=", "location=", "move=", "gps=", "nogps="])
+    except getopt.GetoptError:
+        print_usage()
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            print_usage()
+            sys.exit(2)
+        elif opt in ("-m", "--move"):
+            target = arg
+        elif opt in ("-r", "--rename"):
+            flag_rename = True
+            path = arg
+        elif opt in ("-l", "--location"):
+            flag_location = True
+            path = arg
+        elif opt in ("-g", "--gps"):
+            flag_gps = True
+            path = arg
+        elif opt in "--nogps":
+            flag_nogps = True
+            path = arg
+
+    if flag_rename:
+        rename_files(path)
+    elif flag_location:
+        print_location(path)
+    elif flag_gps:
+        print_gps(path, target)
+    elif flag_nogps:
+        print_nogps(path, target)
+
+    sys.exit(0)
+
+
 def rename_files(files_dir):
     os.chdir(files_dir)
     print('Rename in ', os.getcwd())
@@ -49,7 +131,7 @@ def rename_files(files_dir):
     for f in os.listdir():
         file_name, file_ext = os.path.splitext(f)
 
-        if file_ext.lower() in ['.jpg', '.jpeg']:
+        if is_image_file(file_ext):
             with open(f, "rb") as image_stream:
                 try:
                     img = Image(image_stream)
@@ -57,14 +139,15 @@ def rename_files(files_dir):
                 except AssertionError:
                     print(f)
                     continue
-        elif file_ext.lower() in ['.mov', '.mp4', '.avi']:
-            with exiftool.ExifTool() as et:
-                meta_data = et.get_metadata(f)
-                print(meta_data)
-                dt = datetime.datetime.strptime(meta_data["QuickTime:MediaCreateDate"], "%Y:%m:%d %H:%M:%S")
-                dt += datetime.timedelta(hours=9)   # 여긴 한국이니깐
-                date_time = dt.strftime("%Y-%m-%d %H.%M.%S")
-                # print(dt)
+        elif is_movie_file(file_ext):
+            # with exiftool.ExifTool() as et:
+            #     meta_data = et.get_metadata(f)
+            #     print(file_name)
+            #     dt = datetime.datetime.strptime(meta_data["QuickTime:MediaCreateDate"], "%Y:%m:%d %H:%M:%S")
+            #     dt += datetime.timedelta(hours=9)   # 여긴 한국이니깐
+            #     date_time = dt.strftime("%Y-%m-%d %H.%M.%S")
+            dt = datetime.datetime.strptime(file_name, "%Y%m%d_%H%M%S")
+            date_time = dt.strftime("%Y-%m-%d %H.%M.%S")
         else:
             continue
 
@@ -92,67 +175,19 @@ def print_location(path):
     for f in sorted(os.listdir()):
         file_name, file_ext = os.path.splitext(f)
 
-        with open(f, "rb") as image_stream:
-            try:
-                img = Image(image_stream)
-            except AssertionError:
-                # 동영상인 경우 처리 필요
-                # print(f)
-                continue
+        if is_image_file(file_ext):
+            latitude, longitude = get_image_gps(f)
+        elif is_movie_file(file_ext):
+            latitude, longitude = get_movie_gps(f)
+        else:
+            continue
 
-            # print(dir(img))
-
-        if "gps_latitude" in dir(img):
-            print("{}\t-> ({}, {})".format(f, img.gps_latitude, img.gps_longitude))
+        if latitude is not None:
+            print("{}\t-> {}, {}".format(f, latitude, longitude))
         else:
             print("{}\t-> NO GPS".format(f))
 
         # print(dir(img))
-
-
-def argv_process(argv):
-    target = ''
-    path = ''
-    flag_rename = False
-    flag_gps = False
-    flag_location = False
-    flag_nogps = False
-
-    try:
-        opts, args = getopt.getopt(argv, "hr:l:g:m:", ["help", "rename=", "location=", "move=", "gps=", "nogps="])
-    except getopt.GetoptError:
-        print_usage()
-        sys.exit(2)
-
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print_usage()
-            sys.exit(2)
-        elif opt in ("-r", "--rename"):
-            flag_rename = True
-            path = arg
-        elif opt in ("-m", "--move"):
-            target = arg
-        elif opt in ("-g", "--gps"):
-            flag_gps = True
-            path = arg
-        elif opt in "--nogps":
-            flag_nogps = True
-            path = arg
-        elif opt in ("-l", "--location"):
-            flag_location = True
-            path = arg
-
-    if flag_rename:
-        rename_files(path)
-    elif flag_location:
-        print_location(path)
-    elif flag_gps:
-        print_gps(path, target)
-    elif flag_nogps:
-        print_nogps(path, target)
-
-    sys.exit(0)
 
 
 def print_gps(path, target_dir):
